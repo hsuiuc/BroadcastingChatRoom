@@ -1,8 +1,10 @@
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
+import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.net.InetAddress;
 import java.net.Socket;
 
 /**
@@ -10,11 +12,11 @@ import java.net.Socket;
  */
 public class MyClient {
     class MyGUI implements ActionListener {
-        private JButton sendButton, logoutButton,loginButton, exitButton;
-        private JFrame chatWindow;
-        private JTextArea txtBroadcast;
-        private JTextArea txtMessage;
-        private JList usersList;
+        JButton sendButton, logoutButton,loginButton, exitButton;
+        JFrame chatWindow;
+        JTextArea txtBroadcast;
+        JTextArea txtMessage;
+        JList usersList;
 
         public void display() {
             chatWindow=new JFrame();
@@ -80,8 +82,7 @@ public class MyClient {
                 public void windowClosing(WindowEvent ev) {
                     if(clientSocket!=null) {
                         JOptionPane.showMessageDialog(chatWindow,"u r logged out right now. ","Exit",JOptionPane.INFORMATION_MESSAGE);
-                        //todo
-                        //logoutSession();
+                        logoutSession();
                     }
                     System.exit(0);
                 }
@@ -109,7 +110,8 @@ public class MyClient {
                 String userName = JOptionPane.showInputDialog(chatWindow, "enter your nick name");
                 if (userName != null) {
                     // todo
-                    txtBroadcast.append(userName + " has logged in");
+                    //txtBroadcast.append(userName + " has logged in");
+                    loginSession(userName);
                 }
             }
             else if (eventButton == logoutButton) {
@@ -125,7 +127,8 @@ public class MyClient {
 
     private Socket clientSocket;
     private DataOutputStream clientOutputStream;
-    private MyGUI myGUI;
+    private DataInputStream clientInputStream;
+    MyGUI myGUI;
 
     private void logoutSession() {
         if (clientSocket == null) {
@@ -133,7 +136,7 @@ public class MyClient {
             return;
         } else {
             try {
-                clientOutputStream.writeUTF("log out");
+                clientOutputStream.writeUTF(MyServer.LOGOUT_MESSAGE);
                 Thread.sleep(500);
             } catch (IOException | InterruptedException e) {
                 myGUI.txtBroadcast.append("\n inside logout" + e);
@@ -143,6 +146,24 @@ public class MyClient {
             myGUI.loginButton.setEnabled(true);
             myGUI.chatWindow.setTitle("login to chat");
         }
+    }
+
+    private void loginSession(String userName) {
+        try {
+            clientSocket = new Socket(InetAddress.getLocalHost(), MyServer.PORT);
+            clientOutputStream = new DataOutputStream(clientSocket.getOutputStream());
+            clientInputStream = new DataInputStream(clientSocket.getInputStream());
+
+            //todo
+            //create listening thread
+            Thread thread = new Thread(new ClientListeningThread(clientInputStream, this));
+            thread.start();
+            clientOutputStream.writeUTF(userName);
+            myGUI.chatWindow.setTitle(userName + " chat window");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
     }
 
     public MyClient() {
